@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+.venv/
+backend/.venv/
+venv/
+env/
+
+# Python cache & build
+__pycache__/
+backend/__pycache__/
+backend/app/__pycache__/
+backend/app/*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Databases & local storage
+*.db
+*.sqlite
+*.sqlite3
+backend/nexus_aqua.db
+uploads/
+backend/uploads/
+*.log
+
+# Large Datasets & Training checkpoints
+*dataset*/
+backend/*dataset*/
+runs/
+backend/runs/
+*.cache
+
+# Binary executables
+cloudflared.exe
+
+# Environment variables (keep .env.example)
+.env
+backend/.env
+
+# Build outputs
+dist/
+frontend/dist/
+build/
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
