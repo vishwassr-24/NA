@@ -3,6 +3,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { ShieldAlert, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function Unauthorized() {
   const { user } = useAuth()
@@ -16,6 +17,7 @@ export default function Unauthorized() {
 
   return (
     <div className="min-h-screen bg-ocean-gradient flex items-center justify-center p-4">
+      <ThemeToggle variant="float" />
       <div className="glass-card max-w-md w-full p-8 text-center border-red-500/30">
         <div className="w-16 h-16 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center mx-auto mb-4">
           <ShieldAlert className="w-8 h-8 text-red-400" />

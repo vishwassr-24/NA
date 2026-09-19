@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import { getTimeGreeting } from '../utils/helpers'
+import ThemeToggle from '../components/ThemeToggle'
 
 const ROLE_DASHBOARDS = {
   admin: '/admin',
@@ -79,6 +80,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-ocean-gradient flex items-center justify-center p-4 relative overflow-hidden">
+      <ThemeToggle variant="float" />
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-ocean-500/10 rounded-full blur-3xl animate-pulse-slow" />

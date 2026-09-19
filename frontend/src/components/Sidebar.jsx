@@ -10,23 +10,24 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { getRoleLabel, getTimeGreeting } from '../utils/helpers'
 import toast from 'react-hot-toast'
+import ThemeToggle from './ThemeToggle'
 
 // Role-specific navigation items
 const NAV_ITEMS = {
   admin: [
-    { icon: LayoutDashboard, label: 'Dashboard',      path: '/admin' },
-    { icon: Users,           label: 'User Management', path: '/admin/users' },
-    { icon: Waves,           label: 'All Surveys',     path: '/surveys' },
-    { icon: Map,             label: 'Hotspot Map',     path: '/environment/map' },
-    { icon: FileText,        label: 'Reports',         path: '/researcher/reports' },
-    { icon: Settings,        label: 'System Stats',    path: '/admin/stats' },
+    { icon: LayoutDashboard, label: 'Dashboard',          path: '/admin' },
+    { icon: Users,           label: 'User Management',     path: '/admin/users' },
+    { icon: Waves,           label: 'All Surveys',         path: '/survey/list' },
+    { icon: Map,             label: 'Hotspot Map',         path: '/environment/map' },
+    { icon: FileText,        label: 'Reports',             path: '/researcher/reports' },
+    { icon: Settings,        label: 'System Stats',        path: '/admin/stats' },
   ],
   survey_operator: [
-    { icon: LayoutDashboard, label: 'Dashboard',       path: '/survey' },
-    { icon: Upload,          label: 'Upload & Analyze', path: '/survey/upload' },
-    { icon: Waves,           label: 'Active Surveys',   path: '/surveys' },
-    { icon: Clock,           label: 'Survey History',   path: '/survey/history' },
-    { icon: MapPin,          label: 'Live Location',    path: '/survey/location' },
+    { icon: LayoutDashboard, label: 'Dashboard',           path: '/survey' },
+    { icon: Upload,          label: 'Upload & Analyze',    path: '/survey/upload' },
+    { icon: Waves,           label: 'Surveys Management',  path: '/survey/list' },
+    { icon: Clock,           label: 'Survey History',      path: '/survey/history' },
+    { icon: MapPin,          label: 'Live Location',       path: '/survey/location' },
   ],
   environment_officer: [
     { icon: LayoutDashboard, label: 'Dashboard',        path: '/environment' },
@@ -105,8 +106,9 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Logout */}
-      <div className="p-4 border-t border-white/5">
+      {/* Footer: Theme Toggle & Logout */}
+      <div className="p-4 border-t border-white/5 space-y-2">
+        <ThemeToggle variant="sidebar" />
         <button
           onClick={handleLogout}
           className="nav-item w-full text-red-400 hover:text-red-300 hover:bg-red-500/10"

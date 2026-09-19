@@ -5,6 +5,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Anchor, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../utils/api'
+import ThemeToggle from '../components/ThemeToggle'
 
 const ROLES = [
   { value: 'survey_operator',     label: 'Survey Operator',      desc: 'Upload and manage sonar surveys' },
@@ -71,6 +72,7 @@ export default function Register() {
     const needsApproval = APPROVAL_ROLES.includes(form.role)
     return (
       <div className="min-h-screen bg-ocean-gradient flex items-center justify-center p-4">
+        <ThemeToggle variant="float" />
         <div className="glass-card p-10 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-500/20 border border-green-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-8 h-8 text-green-400" />
@@ -96,6 +98,7 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-ocean-gradient flex items-center justify-center p-4">
+      <ThemeToggle variant="float" />
       <div className="w-full max-w-lg">
         {/* Header */}
         <div className="text-center mb-8">

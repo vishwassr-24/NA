@@ -18,6 +18,15 @@
                       radial-gradient(ellipse at 80% 80%, rgba(20,184,166,0.05) 0%, transparent 50%);
     min-height: 100vh;
     margin: 0;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  html.light body,
+  [data-theme="light"] body {
+    background-color: #f8fafc;
+    color: #0f172a;
+    background-image: radial-gradient(ellipse at 20% 20%, rgba(14,165,233,0.08) 0%, transparent 50%),
+                      radial-gradient(ellipse at 80% 80%, rgba(20,184,166,0.08) 0%, transparent 50%);
   }
 
   ::-webkit-scrollbar {
@@ -29,9 +38,19 @@
     background-color: #0a0f1e;
   }
 
+  html.light ::-webkit-scrollbar-track,
+  [data-theme="light"] ::-webkit-scrollbar-track {
+    background-color: #f1f5f9;
+  }
+
   ::-webkit-scrollbar-thumb {
     background-color: #0369a1;
     border-radius: 9999px;
+  }
+
+  html.light ::-webkit-scrollbar-thumb,
+  [data-theme="light"] ::-webkit-scrollbar-thumb {
+    background-color: #0284c7;
   }
 
   ::-webkit-scrollbar-thumb:hover {
@@ -47,6 +66,7 @@
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 1rem;
+    transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
   }
 
   /* Ocean button */
@@ -118,6 +138,185 @@
   }
 }
 
+/* ── Light Mode Specific Overrides ────────────────────────────────────────── */
+html.light .glass-card,
+[data-theme="light"] .glass-card {
+  background-color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+}
+
+html.light .btn-ghost,
+[data-theme="light"] .btn-ghost {
+  background-color: rgba(241, 245, 249, 0.9);
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+html.light .btn-ghost:hover,
+[data-theme="light"] .btn-ghost:hover {
+  background-color: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+html.light .input-field,
+[data-theme="light"] .input-field {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+html.light .input-field::placeholder,
+[data-theme="light"] .input-field::placeholder {
+  color: #94a3b8;
+}
+
+html.light aside,
+[data-theme="light"] aside {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-right-color: #e2e8f0 !important;
+  box-shadow: 4px 0 24px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light .nav-item,
+[data-theme="light"] .nav-item {
+  color: #475569;
+}
+
+html.light .nav-item:hover,
+[data-theme="light"] .nav-item:hover {
+  color: #0284c7;
+  background-color: rgba(14, 165, 233, 0.08);
+}
+
+html.light .nav-item-active,
+[data-theme="light"] .nav-item-active {
+  background-color: rgba(14, 165, 233, 0.14) !important;
+  color: #0284c7 !important;
+  border: 1px solid rgba(14, 165, 233, 0.35) !important;
+  font-weight: 600;
+}
+
+html.light .section-header,
+[data-theme="light"] .section-header {
+  color: #0f172a;
+}
+
+/* Typography contrast in Light Mode */
+html.light h1:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white),
+html.light h2:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white),
+html.light h3:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white),
+html.light h4:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white),
+html.light h5:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white),
+html.light h6:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white),
+[data-theme="light"] h1:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white),
+[data-theme="light"] h2:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white),
+[data-theme="light"] h3:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white),
+[data-theme="light"] h4:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white),
+[data-theme="light"] h5:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white),
+[data-theme="light"] h6:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white) {
+  color: #0f172a;
+}
+
+html.light .glass-card .text-white:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white):not([class*="bg-ocean-"]):not([class*="bg-teal-"]):not([class*="bg-green-"]):not([class*="bg-red-"]):not([class*="bg-blue-"]):not([class*="bg-purple-"]):not([class*="bg-amber-"]):not([class*="bg-rose-"]):not([class*="bg-gradient-"]),
+html.light aside .text-white:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white):not([class*="bg-gradient-"]):not([class*="bg-ocean-"]),
+html.light main .text-white:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white):not([class*="bg-ocean-"]):not([class*="bg-teal-"]):not([class*="bg-green-"]):not([class*="bg-red-"]):not([class*="bg-blue-"]):not([class*="bg-purple-"]):not([class*="bg-amber-"]):not([class*="bg-rose-"]):not([class*="bg-gradient-"]),
+[data-theme="light"] .glass-card .text-white:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white):not([class*="bg-ocean-"]):not([class*="bg-teal-"]):not([class*="bg-green-"]):not([class*="bg-red-"]):not([class*="bg-blue-"]):not([class*="bg-purple-"]):not([class*="bg-amber-"]):not([class*="bg-rose-"]):not([class*="bg-gradient-"]),
+[data-theme="light"] aside .text-white:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white):not([class*="bg-gradient-"]):not([class*="bg-ocean-"]),
+[data-theme="light"] main .text-white:not([class*="btn-"]):not([class*="badge-"]):not(.keep-white):not([class*="bg-ocean-"]):not([class*="bg-teal-"]):not([class*="bg-green-"]):not([class*="bg-red-"]):not([class*="bg-blue-"]):not([class*="bg-purple-"]):not([class*="bg-amber-"]):not([class*="bg-rose-"]):not([class*="bg-gradient-"]) {
+  color: #0f172a;
+}
+
+html.light .text-gray-400,
+[data-theme="light"] .text-gray-400 {
+  color: #64748b;
+}
+
+html.light .text-gray-300,
+[data-theme="light"] .text-gray-300 {
+  color: #475569;
+}
+
+html.light .text-gray-500,
+[data-theme="light"] .text-gray-500 {
+  color: #64748b;
+}
+
+html.light .text-ocean-400,
+[data-theme="light"] .text-ocean-400 {
+  color: #0284c7 !important;
+}
+
+html.light .text-teal-400,
+[data-theme="light"] .text-teal-400 {
+  color: #0d9488 !important;
+}
+
+html.light .bg-ocean-gradient,
+[data-theme="light"] .bg-ocean-gradient {
+  background-image: linear-gradient(135deg, #e0f2fe 0%, #f0fdfa 50%, #f8fafc 100%) !important;
+}
+
+html.light .bg-navy-950,
+html.light .bg-navy-900,
+[data-theme="light"] .bg-navy-950,
+[data-theme="light"] .bg-navy-900 {
+  background-color: #ffffff !important;
+}
+
+html.light .bg-navy-900\/80,
+html.light .bg-navy-900\/60,
+[data-theme="light"] .bg-navy-900\/80,
+[data-theme="light"] .bg-navy-900\/60 {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+}
+
+html.light .bg-navy-950\/80,
+[data-theme="light"] .bg-navy-950\/80 {
+  background-color: rgba(248, 250, 252, 0.88) !important;
+}
+
+html.light .bg-white\/5,
+[data-theme="light"] .bg-white\/5 {
+  background-color: rgba(241, 245, 249, 0.75) !important;
+}
+
+html.light .bg-white\/10,
+[data-theme="light"] .bg-white\/10 {
+  background-color: rgba(226, 232, 240, 0.85) !important;
+}
+
+html.light .border-white\/5,
+html.light .border-white\/10,
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/10 {
+  border-color: rgba(203, 213, 225, 0.75) !important;
+}
+
+html.light .border-white\/20,
+[data-theme="light"] .border-white\/20 {
+  border-color: #cbd5e1 !important;
+}
+
+html.light table th,
+[data-theme="light"] table th {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light table td,
+[data-theme="light"] table td {
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+html.light table tr:hover td,
+[data-theme="light"] table tr:hover td {
+  background-color: rgba(241, 245, 249, 0.7) !important;
+}
+
 /* ── Sonar scan animation ─────────────────────────────────────────────────── */
 .sonar-scan {
   position: relative;
@@ -135,10 +334,15 @@
   animation: scan 2s linear infinite;
 }
 
-/* ── Leaflet map dark theme ───────────────────────────────────────────────── */
+/* ── Leaflet map theming ─────────────────────────────────────────────────── */
 .leaflet-container {
   background: #0a0f1e !important;
   border-radius: 1rem;
+}
+
+html.light .leaflet-container,
+[data-theme="light"] .leaflet-container {
+  background: #e2e8f0 !important;
 }
 
 .leaflet-popup-content-wrapper {
@@ -148,10 +352,28 @@
   border-radius: 12px !important;
 }
 
+html.light .leaflet-popup-content-wrapper,
+[data-theme="light"] .leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important;
+}
+
 .leaflet-popup-tip {
   background: #0f172a !important;
 }
 
+html.light .leaflet-popup-tip,
+[data-theme="light"] .leaflet-popup-tip {
+  background: #ffffff !important;
+}
+
 .leaflet-tile-pane {
   filter: brightness(0.6) saturate(0.8) hue-rotate(180deg);
+}
+
+html.light .leaflet-tile-pane,
+[data-theme="light"] .leaflet-tile-pane {
+  filter: none !important;
 }

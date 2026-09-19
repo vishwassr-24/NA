@@ -171,11 +171,14 @@ def seed_demo_data(
     if not admin:
         raise HTTPException(status_code=400, detail="No admin user found for seed data")
 
-    # Create demo surveys
+    operator = db.query(User).filter(User.role == UserRole.survey_operator).first()
+    target_op_id = operator.id if operator else admin.id
+
+    # Create demo surveys (with realistic mix of active and completed surveys)
     surveys = [
-        Survey(title="Demo Bay Survey Alpha", description="Initial sonar sweep of northern bay", location_name="Northern Bay", latitude=19.0760, longitude=72.8777, depth_m=25.5, operator_id=admin.id),
-        Survey(title="Deep Channel Survey", description="Deep channel debris assessment", location_name="Mumbai Channel", latitude=18.9389, longitude=72.8258, depth_m=85.0, operator_id=admin.id),
-        Survey(title="Coastal Survey Beta", description="Shallow coastal zone survey", location_name="Coastal Zone B", latitude=19.1134, longitude=72.8968, depth_m=12.3, operator_id=admin.id),
+        Survey(title="Demo Bay Survey Alpha", description="Initial sonar sweep of northern bay", location_name="Northern Bay", latitude=19.0760, longitude=72.8777, depth_m=25.5, status=SurveyStatus.active, operator_id=target_op_id),
+        Survey(title="Deep Channel Survey", description="Deep channel debris assessment - Completed Sweep", location_name="Mumbai Channel", latitude=18.9389, longitude=72.8258, depth_m=85.0, status=SurveyStatus.completed, operator_id=target_op_id),
+        Survey(title="Coastal Survey Beta", description="Shallow coastal zone sonar sweep - Verified", location_name="Coastal Zone B", latitude=19.1134, longitude=72.8968, depth_m=12.3, status=SurveyStatus.completed, operator_id=target_op_id),
     ]
     for s in surveys:
         db.add(s)

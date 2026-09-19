@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard'
 import Unauthorized from './pages/Unauthorized'
 import ProtectedRoute from './components/ProtectedRoute'
 import { Loader2 } from 'lucide-react'
+import { useTheme } from './context/ThemeContext'
 
 // Code-split heavy dashboard pages so Login loads instantly without dependencies
 const SurveyOperator = lazy(() => import('./pages/SurveyOperator'))
@@ -24,38 +25,41 @@ const Admin = lazy(() => import('./pages/Admin'))
 
 function PageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy-950">
+    <div className="min-h-screen flex items-center justify-center bg-navy-950 dark:bg-navy-950 light:bg-slate-50">
       <div className="flex flex-col items-center gap-4">
         <Loader2 className="w-10 h-10 text-ocean-500 animate-spin" />
-        <p className="text-gray-400 text-sm">Loading workstation module...</p>
+        <p className="text-gray-400 dark:text-gray-400 light:text-slate-500 text-sm">Loading workstation module...</p>
       </div>
     </div>
   )
 }
 
 export default function App() {
+  const { isDark } = useTheme()
+
   return (
     <>
       <Toaster
         position="top-right"
         toastOptions={{
           style: {
-            background: '#0f172a',
-            color: '#e2e8f0',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            background: isDark ? '#0f172a' : '#ffffff',
+            color: isDark ? '#e2e8f0' : '#0f172a',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(203, 213, 225, 0.8)',
+            boxShadow: isDark ? '0 10px 25px -5px rgba(0, 0, 0, 0.5)' : '0 10px 25px -5px rgba(15, 23, 42, 0.1)',
             borderRadius: '12px',
             fontSize: '14px',
           },
           success: {
             iconTheme: {
               primary: '#14b8a6',
-              secondary: '#0f172a',
+              secondary: isDark ? '#0f172a' : '#ffffff',
             },
           },
           error: {
             iconTheme: {
               primary: '#ef4444',
-              secondary: '#0f172a',
+              secondary: isDark ? '#0f172a' : '#ffffff',
             },
           },
         }}
@@ -89,16 +93,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/surveys"
-          element={
-            <ProtectedRoute allowedRoles={['admin', 'survey_operator']}>
-              <Suspense fallback={<PageLoader />}>
-                <SurveyOperator />
-              </Suspense>
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/surveys" element={<Navigate to="/survey/list" replace />} />
+        <Route path="/surveys/*" element={<Navigate to="/survey/list" replace />} />
 
         {/* Marine Expert Routes */}
         <Route

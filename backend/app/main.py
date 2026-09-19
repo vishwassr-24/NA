@@ -25,7 +25,7 @@ from app.models import Base, User, UserRole, UserStatus
 from app.auth import hash_password
 
 # Routers
-from app.routers import auth, survey, ai, expert, environment, researcher, admin
+from app.routers import auth, survey, ai, expert, environment, researcher, admin, alerts
 
 load_dotenv()
 
@@ -213,6 +213,7 @@ app.include_router(expert.router)
 app.include_router(environment.router)
 app.include_router(researcher.router)
 app.include_router(admin.router)
+app.include_router(alerts.router)
 
 
 @app.get("/", tags=["Health"])

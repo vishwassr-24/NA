@@ -2,13 +2,13 @@
 // Handles: Survey list, Create survey, Upload & analyze sonar images, History, Location
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Routes, Route, useNavigate, Link } from 'react-router-dom'
+import { Routes, Route, useNavigate, Link, Navigate, useSearchParams } from 'react-router-dom'
 import {
   Waves, Upload, Plus, Clock, MapPin, ChevronRight,
   Zap, AlertTriangle, CheckCircle, XCircle, Loader2,
   Eye, Trash2, BarChart2, Image, Activity, Search,
   Sparkles, LifeBuoy, Leaf, ShieldCheck, Layers, Info,
-  Send, Share2, CheckSquare
+  Send, Share2, CheckSquare, RotateCcw, Filter
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardLayout from '../components/DashboardLayout'
@@ -21,14 +21,20 @@ import {
 } from '../utils/helpers'
 
 // ─── Stat Card ───────────────────────────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, color = 'ocean' }) {
+function StatCard({ icon: Icon, label, value, color = 'ocean', onClick, active, subtitle }) {
   return (
-    <div className="stat-card">
+    <div
+      onClick={onClick}
+      className={`stat-card transition-all duration-200 select-none ${
+        onClick ? 'cursor-pointer hover:border-ocean-500/50 hover:scale-[1.02]' : ''
+      } ${active ? 'ring-2 ring-ocean-400 bg-ocean-500/10 border-ocean-500/40' : ''}`}
+    >
       <div className={`w-10 h-10 bg-${color}-500/20 rounded-xl flex items-center justify-center mb-1`}>
         <Icon className={`w-5 h-5 text-${color}-400`} />
       </div>
       <p className="text-2xl font-bold text-white">{value ?? '—'}</p>
       <p className="text-sm text-gray-400">{label}</p>
+      {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
     </div>
   )
 }
@@ -38,14 +44,36 @@ function SurveyDashboard() {
   const { user } = useAuth()
   const [surveys, setSurveys] = useState([])
   const [loading, setLoading] = useState(true)
+  const [activeFilter, setActiveFilter] = useState('all') // 'all' | 'active' | 'completed'
   const navigate = useNavigate()
 
-  useEffect(() => {
+  const fetchSurveys = () => {
+    setLoading(true)
     api.get('/surveys/')
       .then(r => setSurveys(r.data))
       .catch(() => toast.error('Failed to load surveys'))
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    fetchSurveys()
   }, [])
+
+  const handleStatusChange = async (surveyId, newStatus) => {
+    try {
+      await api.patch(`/surveys/${surveyId}`, { status: newStatus })
+      toast.success(
+        newStatus === 'completed'
+          ? 'Survey marked as completed! 🎯'
+          : 'Survey reopened as active! 🌊'
+      )
+      setSurveys(prev =>
+        prev.map(s => (s.id === surveyId ? { ...s, status: newStatus } : s))
+      )
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update survey status')
+    }
+  }
 
   const stats = {
     total: surveys.length,
@@ -53,6 +81,12 @@ function SurveyDashboard() {
     images: surveys.reduce((a, s) => a + (s.image_count || 0), 0),
     completed: surveys.filter(s => s.status === 'completed').length,
   }
+
+  const filteredSurveys = surveys.filter(s => {
+    if (activeFilter === 'active') return s.status === 'active'
+    if (activeFilter === 'completed') return s.status === 'completed'
+    return true
+  })
 
   return (
     <div className="space-y-6">
@@ -63,43 +97,136 @@ function SurveyDashboard() {
             <strong className="text-ocean-400 font-semibold">{getTimeGreeting()}</strong>, {user?.name}! Survey control and sonar mission telemetry.
           </p>
         </div>
-        <button onClick={() => navigate('/survey/upload')} className="btn-ocean flex items-center gap-2">
-          <Upload className="w-4 h-4" /> Upload & Analyze
-        </button>
+        <div className="flex items-center gap-2">
+          <Link to="/survey/list" className="btn-ghost flex items-center gap-1.5 text-sm">
+            <Waves className="w-4 h-4" /> Manage Surveys
+          </Link>
+          <button onClick={() => navigate('/survey/upload')} className="btn-ocean flex items-center gap-2">
+            <Upload className="w-4 h-4" /> Upload & Analyze
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Waves}      label="Total Surveys"    value={stats.total}     color="ocean" />
-        <StatCard icon={Activity}   label="Active Surveys"   value={stats.active}    color="teal" />
-        <StatCard icon={Image}      label="Images Uploaded"  value={stats.images}    color="purple" />
-        <StatCard icon={CheckCircle} label="Completed"       value={stats.completed} color="green" />
+        <StatCard
+          icon={Waves}
+          label="Total Surveys"
+          value={stats.total}
+          color="ocean"
+          onClick={() => setActiveFilter('all')}
+          active={activeFilter === 'all'}
+          subtitle="Click to view all"
+        />
+        <StatCard
+          icon={Activity}
+          label="Active Surveys"
+          value={stats.active}
+          color="teal"
+          onClick={() => setActiveFilter(activeFilter === 'active' ? 'all' : 'active')}
+          active={activeFilter === 'active'}
+          subtitle="In-progress sweeps"
+        />
+        <StatCard
+          icon={Image}
+          label="Images Uploaded"
+          value={stats.images}
+          color="purple"
+          subtitle="Total sonar frames"
+        />
+        <StatCard
+          icon={CheckCircle}
+          label="Completed Surveys"
+          value={stats.completed}
+          color="green"
+          onClick={() => setActiveFilter(activeFilter === 'completed' ? 'all' : 'completed')}
+          active={activeFilter === 'completed'}
+          subtitle="Click to inspect completed"
+        />
       </div>
 
-      {/* Recent Surveys */}
+      {/* Surveys List Section */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="section-header">Recent Surveys</h2>
-          <Link to="/surveys" className="text-ocean-400 hover:text-ocean-300 text-sm flex items-center gap-1">
-            View all <ChevronRight className="w-4 h-4" />
-          </Link>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <h2 className="section-header">Surveys Overview</h2>
+            <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 text-xs">
+              <button
+                onClick={() => setActiveFilter('all')}
+                className={`px-3 py-1 rounded-lg transition-colors ${
+                  activeFilter === 'all'
+                    ? 'bg-ocean-500 text-white font-semibold shadow-sm'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                All ({stats.total})
+              </button>
+              <button
+                onClick={() => setActiveFilter('active')}
+                className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  activeFilter === 'active'
+                    ? 'bg-emerald-500 text-white font-semibold shadow-sm'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                Active ({stats.active})
+              </button>
+              <button
+                onClick={() => setActiveFilter('completed')}
+                className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  activeFilter === 'completed'
+                    ? 'bg-blue-500 text-white font-semibold shadow-sm'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <CheckCircle className="w-3 h-3 text-blue-200" />
+                Completed ({stats.completed})
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link to="/survey/list" className="text-ocean-400 hover:text-ocean-300 text-sm flex items-center gap-1">
+              Full Management <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
+
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 text-ocean-400 animate-spin" />
           </div>
-        ) : surveys.length === 0 ? (
+        ) : filteredSurveys.length === 0 ? (
           <div className="glass-card p-12 text-center">
             <Waves className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">No surveys yet. Start by creating one.</p>
-            <Link to="/surveys" className="btn-ocean inline-flex items-center gap-2 mt-4">
-              <Plus className="w-4 h-4" /> New Survey
-            </Link>
+            <p className="text-gray-400 font-medium">
+              {activeFilter === 'completed'
+                ? 'No surveys marked as completed yet. Complete a survey below once its sonar mission is finished.'
+                : activeFilter === 'active'
+                ? 'No active surveys at the moment.'
+                : 'No surveys yet. Start by creating your first survey.'}
+            </p>
+            {activeFilter !== 'all' ? (
+              <button
+                onClick={() => setActiveFilter('all')}
+                className="btn-ghost inline-flex items-center gap-2 mt-4 text-sm text-ocean-400"
+              >
+                Show all surveys
+              </button>
+            ) : (
+              <Link to="/survey/list" className="btn-ocean inline-flex items-center gap-2 mt-4">
+                <Plus className="w-4 h-4" /> New Survey
+              </Link>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
-            {surveys.slice(0, 5).map(survey => (
-              <SurveyCard key={survey.id} survey={survey} />
+            {filteredSurveys.slice(0, 8).map(survey => (
+              <SurveyCard
+                key={survey.id}
+                survey={survey}
+                onStatusChange={handleStatusChange}
+              />
             ))}
           </div>
         )}
@@ -109,47 +236,152 @@ function SurveyDashboard() {
 }
 
 // ─── Survey Card ─────────────────────────────────────────────────────────────
-function SurveyCard({ survey, onDelete }) {
+function SurveyCard({ survey, onStatusChange }) {
   const navigate = useNavigate()
-  const statusColors = { active: 'text-green-400', completed: 'text-blue-400', archived: 'text-gray-400' }
+  const isCompleted = survey.status === 'completed'
 
   return (
     <div className="glass-card p-5 flex items-center gap-4 hover:bg-white/5 transition-all duration-200 group">
-      <div className="w-10 h-10 bg-ocean-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-        <Waves className="w-5 h-5 text-ocean-400" />
+      <div
+        className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+          isCompleted ? 'bg-blue-500/20 text-blue-400' : 'bg-ocean-500/20 text-ocean-400'
+        }`}
+      >
+        {isCompleted ? <CheckCircle className="w-5 h-5" /> : <Waves className="w-5 h-5" />}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-white truncate">{survey.title}</p>
-        <div className="flex items-center gap-4 mt-1">
-          <span className={`text-xs ${statusColors[survey.status] || 'text-gray-400'} font-medium capitalize`}>{survey.status}</span>
-          {survey.location_name && <span className="text-xs text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3" />{survey.location_name}</span>}
+        <div className="flex items-center gap-2">
+          <p className="font-semibold text-white truncate">{survey.title}</p>
+          <span
+            className={`text-xs px-2.5 py-0.5 rounded-full font-medium border flex items-center gap-1.5 ${
+              isCompleted
+                ? 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+            }`}
+          >
+            {isCompleted ? (
+              <>
+                <CheckCircle className="w-3 h-3 text-blue-400" />
+                Completed
+              </>
+            ) : (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Active
+              </>
+            )}
+          </span>
+        </div>
+        <div className="flex items-center gap-4 mt-1 flex-wrap">
+          {survey.location_name && (
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              <MapPin className="w-3 h-3 text-gray-500" />
+              {survey.location_name}
+            </span>
+          )}
           <span className="text-xs text-gray-500">{formatDate(survey.created_at)}</span>
-          <span className="text-xs text-gray-500">{survey.image_count} image{survey.image_count !== 1 ? 's' : ''}</span>
+          <span className="text-xs text-gray-400 font-medium">
+            {survey.image_count || 0} scan{survey.image_count !== 1 ? 's' : ''}
+          </span>
+          {survey.depth_m && (
+            <span className="text-xs text-cyan-400/80 font-mono">
+              Depth: {survey.depth_m}m
+            </span>
+          )}
         </div>
       </div>
-      <button
-        onClick={() => navigate(`/survey/upload?survey=${survey.id}`)}
-        className="opacity-0 group-hover:opacity-100 btn-ocean text-xs py-1.5 px-3 flex items-center gap-1 transition-opacity"
-      >
-        <Upload className="w-3 h-3" /> Upload
-      </button>
+
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Quick Complete / Reopen Button */}
+        {onStatusChange && (
+          <button
+            onClick={() => onStatusChange(survey.id, isCompleted ? 'active' : 'completed')}
+            title={isCompleted ? 'Reopen survey as active' : 'Mark this survey mission as completed'}
+            className={`text-xs py-1.5 px-3 rounded-lg border transition-all flex items-center gap-1.5 ${
+              isCompleted
+                ? 'border-white/10 text-gray-300 hover:text-white hover:bg-white/10'
+                : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+            }`}
+          >
+            {isCompleted ? (
+              <>
+                <RotateCcw className="w-3 h-3" /> Reopen
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-3 h-3" /> Mark Completed
+              </>
+            )}
+          </button>
+        )}
+
+        <button
+          onClick={() => navigate(`/survey/upload?survey=${survey.id}`)}
+          className="btn-ocean text-xs py-1.5 px-3 flex items-center gap-1"
+        >
+          <Upload className="w-3 h-3" /> {isCompleted ? 'View / Upload' : 'Upload'}
+        </button>
+      </div>
     </div>
   )
 }
 
 // ─── Surveys List Page ────────────────────────────────────────────────────────
+// ─── Surveys List & Management Page ──────────────────────────────────────────
 function SurveyList() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialFilter = searchParams.get('filter') || 'all'
   const [surveys, setSurveys] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
+  const [activeFilter, setActiveFilter] = useState(initialFilter)
+  const [searchQuery, setSearchQuery] = useState('')
   const [form, setForm] = useState({ title: '', description: '', location_name: '', latitude: '', longitude: '', depth_m: '' })
 
   const fetchSurveys = () => {
     setLoading(true)
-    api.get('/surveys/').then(r => setSurveys(r.data)).catch(() => toast.error('Failed to load')).finally(() => setLoading(false))
+    api.get('/surveys/')
+      .then(r => setSurveys(r.data))
+      .catch(() => toast.error('Failed to load surveys'))
+      .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchSurveys() }, [])
+  useEffect(() => {
+    fetchSurveys()
+  }, [])
+
+  useEffect(() => {
+    const f = searchParams.get('filter')
+    if (f) setActiveFilter(f)
+  }, [searchParams])
+
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter)
+    if (filter === 'all') {
+      searchParams.delete('filter')
+      setSearchParams(searchParams)
+    } else {
+      setSearchParams({ filter })
+    }
+  }
+
+  const handleStatusChange = async (surveyId, newStatus) => {
+    try {
+      await api.patch(`/surveys/${surveyId}`, { status: newStatus })
+      toast.success(
+        newStatus === 'completed'
+          ? 'Survey marked as completed! 🎯'
+          : newStatus === 'active'
+          ? 'Survey reopened as active! 🌊'
+          : `Survey status updated to ${newStatus}`
+      )
+      setSurveys(prev =>
+        prev.map(s => (s.id === surveyId ? { ...s, status: newStatus } : s))
+      )
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update survey status')
+    }
+  }
 
   const createSurvey = async (e) => {
     e.preventDefault()
@@ -161,7 +393,7 @@ function SurveyList() {
         depth_m: form.depth_m ? parseFloat(form.depth_m) : null,
       }
       await api.post('/surveys/', payload)
-      toast.success('Survey created!')
+      toast.success('Survey created successfully!')
       setShowCreate(false)
       setForm({ title: '', description: '', location_name: '', latitude: '', longitude: '', depth_m: '' })
       fetchSurveys()
@@ -171,7 +403,7 @@ function SurveyList() {
   }
 
   const deleteSurvey = async (id) => {
-    if (!confirm('Delete this survey? This cannot be undone.')) return
+    if (!confirm('Delete this survey? All associated images and detections will be permanently removed.')) return
     try {
       await api.delete(`/surveys/${id}`)
       toast.success('Survey deleted')
@@ -181,44 +413,169 @@ function SurveyList() {
     }
   }
 
+  const activeCount = surveys.filter(s => s.status === 'active').length
+  const completedCount = surveys.filter(s => s.status === 'completed').length
+  const archivedCount = surveys.filter(s => s.status === 'archived').length
+
+  const filteredSurveys = surveys.filter(s => {
+    if (activeFilter === 'active' && s.status !== 'active') return false
+    if (activeFilter === 'completed' && s.status !== 'completed') return false
+    if (activeFilter === 'archived' && s.status !== 'archived') return false
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      const titleMatch = s.title?.toLowerCase().includes(q)
+      const locMatch = s.location_name?.toLowerCase().includes(q)
+      const descMatch = s.description?.toLowerCase().includes(q)
+      return titleMatch || locMatch || descMatch
+    }
+    return true
+  })
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Surveys</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Surveys Management</h1>
+          <p className="text-gray-400 text-sm mt-1">
+            Manage active sonar sweeps, verify mission completions, and initiate new surveys.
+          </p>
+        </div>
         <button onClick={() => setShowCreate(!showCreate)} className="btn-ocean flex items-center gap-2">
           <Plus className="w-4 h-4" /> New Survey
         </button>
       </div>
 
+      {/* Summary Filter Tabs & Search Bar */}
+      <div className="glass-card p-4 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 w-full md:w-auto overflow-x-auto">
+          <button
+            onClick={() => handleFilterChange('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              activeFilter === 'all'
+                ? 'bg-ocean-500 text-white shadow'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            All Surveys ({surveys.length})
+          </button>
+          <button
+            onClick={() => handleFilterChange('active')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+              activeFilter === 'active'
+                ? 'bg-emerald-500 text-white shadow'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            Active ({activeCount})
+          </button>
+          <button
+            onClick={() => handleFilterChange('completed')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+              activeFilter === 'completed'
+                ? 'bg-blue-500 text-white shadow'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <CheckCircle className="w-3.5 h-3.5 text-blue-200" />
+            Completed ({completedCount})
+          </button>
+          {archivedCount > 0 && (
+            <button
+              onClick={() => handleFilterChange('archived')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                activeFilter === 'archived'
+                  ? 'bg-gray-600 text-white shadow'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Archived ({archivedCount})
+            </button>
+          )}
+        </div>
+
+        <div className="relative w-full md:w-64">
+          <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Search surveys..."
+            className="input-field pl-9 text-xs py-1.5"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
       {showCreate && (
-        <div className="glass-card p-6">
-          <h3 className="text-lg font-bold text-white mb-4">Create New Survey</h3>
+        <div className="glass-card p-6 border-ocean-500/30 shadow-xl">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Waves className="w-5 h-5 text-ocean-400" /> Create New Survey
+          </h3>
           <form onSubmit={createSurvey} className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-300 mb-1">Survey Title *</label>
-              <input className="input-field" placeholder="e.g., Northern Bay Survey Q1" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required />
+              <input
+                className="input-field"
+                placeholder="e.g., Northern Bay Sonar Sweep Q1"
+                value={form.title}
+                onChange={e => setForm({ ...form, title: e.target.value })}
+                required
+              />
             </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
-              <textarea className="input-field" rows={2} placeholder="Brief description..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+              <textarea
+                className="input-field"
+                rows={2}
+                placeholder="Brief mission scope or sonar sweep objectives..."
+                value={form.description}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Location Name</label>
-              <input className="input-field" placeholder="e.g., Mumbai Harbour" value={form.location_name} onChange={e => setForm({ ...form, location_name: e.target.value })} />
+              <input
+                className="input-field"
+                placeholder="e.g., Mumbai Harbour"
+                value={form.location_name}
+                onChange={e => setForm({ ...form, location_name: e.target.value })}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Depth (m)</label>
-              <input className="input-field" type="number" step="0.1" min="0" placeholder="e.g., 25.5" value={form.depth_m} onChange={e => setForm({ ...form, depth_m: e.target.value })} />
+              <input
+                className="input-field"
+                type="number"
+                step="0.1"
+                min="0"
+                placeholder="e.g., 25.5"
+                value={form.depth_m}
+                onChange={e => setForm({ ...form, depth_m: e.target.value })}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Latitude</label>
-              <input className="input-field" type="number" step="any" placeholder="e.g., 19.0760" value={form.latitude} onChange={e => setForm({ ...form, latitude: e.target.value })} />
+              <input
+                className="input-field"
+                type="number"
+                step="any"
+                placeholder="e.g., 19.0760"
+                value={form.latitude}
+                onChange={e => setForm({ ...form, latitude: e.target.value })}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Longitude</label>
-              <input className="input-field" type="number" step="any" placeholder="e.g., 72.8777" value={form.longitude} onChange={e => setForm({ ...form, longitude: e.target.value })} />
+              <input
+                className="input-field"
+                type="number"
+                step="any"
+                placeholder="e.g., 72.8777"
+                value={form.longitude}
+                onChange={e => setForm({ ...form, longitude: e.target.value })}
+              />
             </div>
-            <div className="col-span-2 flex gap-3">
+            <div className="col-span-2 flex gap-3 pt-2">
               <button type="submit" className="btn-ocean">Create Survey</button>
               <button type="button" onClick={() => setShowCreate(false)} className="btn-ghost">Cancel</button>
             </div>
@@ -227,36 +584,136 @@ function SurveyList() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-ocean-400 animate-spin" /></div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 text-ocean-400 animate-spin" />
+        </div>
       ) : (
         <div className="space-y-3">
-          {surveys.map(survey => (
-            <div key={survey.id} className="glass-card p-5 flex items-center gap-4 group">
-              <div className="w-10 h-10 bg-ocean-500/20 rounded-xl flex items-center justify-center">
-                <Waves className="w-5 h-5 text-ocean-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-white">{survey.title}</p>
-                <div className="flex items-center gap-4 mt-1 flex-wrap">
-                  <span className="text-xs text-gray-400 capitalize">Status: <span className="text-white">{survey.status}</span></span>
-                  {survey.location_name && <span className="text-xs text-gray-500">{survey.location_name}</span>}
-                  <span className="text-xs text-gray-500">{formatDate(survey.created_at)}</span>
-                  <span className="text-xs text-gray-500">{survey.image_count} images</span>
+          {filteredSurveys.map(survey => {
+            const isCompleted = survey.status === 'completed'
+            return (
+              <div
+                key={survey.id}
+                className="glass-card p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-ocean-500/30 transition-all duration-200"
+              >
+                <div className="flex items-start gap-4">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      isCompleted ? 'bg-blue-500/20 text-blue-400' : 'bg-ocean-500/20 text-ocean-400'
+                    }`}
+                  >
+                    {isCompleted ? <CheckCircle className="w-5 h-5" /> : <Waves className="w-5 h-5" />}
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-white text-base">{survey.title}</p>
+                      <span
+                        className={`text-xs px-2.5 py-0.5 rounded-full font-medium border flex items-center gap-1.5 ${
+                          isCompleted
+                            ? 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                            : survey.status === 'archived'
+                            ? 'bg-gray-500/10 text-gray-300 border-gray-500/30'
+                            : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                        }`}
+                      >
+                        {isCompleted ? (
+                          <>
+                            <CheckCircle className="w-3 h-3 text-blue-400" />
+                            Completed
+                          </>
+                        ) : survey.status === 'archived' ? (
+                          'Archived'
+                        ) : (
+                          <>
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            Active
+                          </>
+                        )}
+                      </span>
+                    </div>
+
+                    {survey.description && (
+                      <p className="text-xs text-gray-400 line-clamp-1">{survey.description}</p>
+                    )}
+
+                    <div className="flex items-center gap-4 text-xs text-gray-400 flex-wrap pt-0.5">
+                      {survey.location_name && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-gray-500" /> {survey.location_name}
+                        </span>
+                      )}
+                      <span>{formatDate(survey.created_at)}</span>
+                      <span className="text-gray-300 font-medium">{survey.image_count || 0} sonar images</span>
+                      {survey.depth_m && <span className="font-mono text-cyan-400">Depth: {survey.depth_m}m</span>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-shrink-0 self-end md:self-center">
+                  {/* Status Toggle Button */}
+                  <button
+                    onClick={() => handleStatusChange(survey.id, isCompleted ? 'active' : 'completed')}
+                    className={`text-xs py-1.5 px-3 rounded-lg border transition-all flex items-center gap-1.5 ${
+                      isCompleted
+                        ? 'border-white/10 text-gray-300 hover:text-white hover:bg-white/10'
+                        : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                    }`}
+                  >
+                    {isCompleted ? (
+                      <>
+                        <RotateCcw className="w-3 h-3" /> Reopen Survey
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-3 h-3" /> Mark as Completed
+                      </>
+                    )}
+                  </button>
+
+                  <Link
+                    to={`/survey/upload?survey=${survey.id}`}
+                    className="btn-ocean text-xs py-1.5 px-3 flex items-center gap-1"
+                  >
+                    <Upload className="w-3 h-3" /> {isCompleted ? 'View / Upload' : 'Analyze'}
+                  </Link>
+
+                  <button
+                    onClick={() => deleteSurvey(survey.id)}
+                    title="Delete survey"
+                    className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Link to={`/survey/upload?survey=${survey.id}`} className="btn-ocean text-xs py-1.5 px-3 flex items-center gap-1">
-                  <Upload className="w-3 h-3" /> Analyze
-                </Link>
-                <button onClick={() => deleteSurvey(survey.id)} className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-          {surveys.length === 0 && (
+            )
+          })}
+
+          {filteredSurveys.length === 0 && (
             <div className="glass-card p-12 text-center">
-              <p className="text-gray-400">No surveys found. Create your first survey.</p>
+              <Waves className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400 font-medium">
+                {activeFilter === 'completed'
+                  ? 'No completed surveys found. Once a mission is finished, mark it as completed.'
+                  : activeFilter === 'active'
+                  ? 'No active surveys found.'
+                  : 'No surveys found matching your criteria.'}
+              </p>
+              {activeFilter !== 'all' ? (
+                <button
+                  onClick={() => handleFilterChange('all')}
+                  className="btn-ghost text-xs text-ocean-400 mt-3"
+                >
+                  View all surveys
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="btn-ocean inline-flex items-center gap-2 mt-4"
+                >
+                  <Plus className="w-4 h-4" /> Create First Survey
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -446,7 +903,12 @@ function UploadAnalyze() {
         <div className="space-y-4">
           {/* Survey selector */}
           <div className="glass-card p-5">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Select Survey Session</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-gray-300">Select Survey Session</label>
+              <Link to="/survey/list" className="text-xs text-ocean-400 hover:text-ocean-300 flex items-center gap-1">
+                <Plus className="w-3 h-3" /> New Survey
+              </Link>
+            </div>
             <select
               className="input-field"
               value={selectedSurvey}
@@ -454,9 +916,77 @@ function UploadAnalyze() {
             >
               {surveys.length === 0 && <option value="">— Auto-creating active session on analyze —</option>}
               {surveys.map(s => (
-                <option key={s.id} value={s.id}>{s.title} ({s.location_name || 'Active Zone'})</option>
+                <option key={s.id} value={s.id}>
+                  {s.title} ({s.status === 'completed' ? '✓ Completed' : '● Active'}) {s.location_name ? `· ${s.location_name}` : ''}
+                </option>
               ))}
             </select>
+
+            {/* Current Selected Survey Status & Completion Toggle */}
+            {(() => {
+              const currentSurveyObj = surveys.find(s => String(s.id) === String(selectedSurvey))
+              if (!currentSurveyObj) return null
+              const isComp = currentSurveyObj.status === 'completed'
+              return (
+                <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-400">Mission Status:</span>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full font-medium border flex items-center gap-1.5 ${
+                        isComp
+                          ? 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                          : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                      }`}
+                    >
+                      {isComp ? (
+                        <>
+                          <CheckCircle className="w-3 h-3 text-blue-400" /> Completed
+                        </>
+                      ) : (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Active Sweep
+                        </>
+                      )}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const next = isComp ? 'active' : 'completed'
+                      try {
+                        await api.patch(`/surveys/${currentSurveyObj.id}`, { status: next })
+                        toast.success(
+                          next === 'completed'
+                            ? 'Survey marked as completed! 🎯'
+                            : 'Survey reopened as active! 🌊'
+                        )
+                        setSurveys(prev =>
+                          prev.map(s => (s.id === currentSurveyObj.id ? { ...s, status: next } : s))
+                        )
+                      } catch {
+                        toast.error('Failed to update survey status')
+                      }
+                    }}
+                    className={`text-xs py-1 px-2.5 rounded-lg border transition-all flex items-center gap-1.5 ${
+                      isComp
+                        ? 'border-white/10 text-gray-300 hover:text-white hover:bg-white/10'
+                        : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                    }`}
+                  >
+                    {isComp ? (
+                      <>
+                        <RotateCcw className="w-3 h-3" /> Reopen Survey
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-3 h-3" /> Mark Mission Completed
+                      </>
+                    )}
+                  </button>
+                </div>
+              )
+            })()}
           </div>
 
           {/* Drop zone */}
@@ -885,8 +1415,10 @@ function SurveyHistory() {
   const [surveys, setSurveys] = useState([])
   const [loading, setLoading] = useState(true)
   const [images, setImages] = useState({})
+  const [activeFilter, setActiveFilter] = useState('all') // 'all', 'active', 'completed'
 
-  useEffect(() => {
+  const fetchHistory = () => {
+    setLoading(true)
     api.get('/surveys/')
       .then(r => {
         setSurveys(r.data)
@@ -899,47 +1431,207 @@ function SurveyHistory() {
       })
       .catch(() => toast.error('Failed to load surveys'))
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    fetchHistory()
   }, [])
+
+  const handleStatusChange = async (surveyId, newStatus) => {
+    try {
+      await api.patch(`/surveys/${surveyId}`, { status: newStatus })
+      toast.success(
+        newStatus === 'completed'
+          ? 'Survey marked as completed! 🎯'
+          : 'Survey reopened as active! 🌊'
+      )
+      setSurveys(prev =>
+        prev.map(s => (s.id === surveyId ? { ...s, status: newStatus } : s))
+      )
+    } catch {
+      toast.error('Failed to update survey status')
+    }
+  }
+
+  const activeCount = surveys.filter(s => s.status === 'active').length
+  const completedCount = surveys.filter(s => s.status === 'completed').length
+
+  const filteredSurveys = surveys.filter(s => {
+    if (activeFilter === 'active') return s.status === 'active'
+    if (activeFilter === 'completed') return s.status === 'completed'
+    return true
+  })
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-white">Survey History</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Survey History & Telemetry</h1>
+          <p className="text-gray-400 text-sm mt-1">
+            Historical logs of all acoustic sweeps, completed operations, and processed frames.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link to="/survey/list" className="btn-ocean flex items-center gap-2 text-sm">
+            <Waves className="w-4 h-4" /> Manage Surveys
+          </Link>
+        </div>
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-xl border border-white/10 w-fit text-xs">
+        <button
+          onClick={() => setActiveFilter('all')}
+          className={`px-3 py-1.5 rounded-lg transition-colors ${
+            activeFilter === 'all'
+              ? 'bg-ocean-500 text-white font-semibold shadow-sm'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          All Missions ({surveys.length})
+        </button>
+        <button
+          onClick={() => setActiveFilter('active')}
+          className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+            activeFilter === 'active'
+              ? 'bg-emerald-500 text-white font-semibold shadow-sm'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          Active ({activeCount})
+        </button>
+        <button
+          onClick={() => setActiveFilter('completed')}
+          className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+            activeFilter === 'completed'
+              ? 'bg-blue-500 text-white font-semibold shadow-sm'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <CheckCircle className="w-3.5 h-3.5 text-blue-200" />
+          Completed ({completedCount})
+        </button>
+      </div>
+
       {loading ? (
-        <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-ocean-400 animate-spin" /></div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 text-ocean-400 animate-spin" />
+        </div>
       ) : (
         <div className="space-y-4">
-          {surveys.map(survey => (
-            <div key={survey.id} className="glass-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-bold text-white text-lg">{survey.title}</h3>
-                  <p className="text-sm text-gray-400 mt-0.5">{survey.location_name || 'No location'} · {formatDate(survey.created_at)}</p>
-                </div>
-                <span className="text-xs font-medium px-3 py-1 rounded-full bg-ocean-500/20 text-ocean-300 border border-ocean-500/30 capitalize">{survey.status}</span>
-              </div>
-              {(images[survey.id] || []).length > 0 ? (
-                <div className="grid grid-cols-1 gap-2">
-                  {(images[survey.id] || []).slice(0, 3).map(img => (
-                    <div key={img.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                      <Image className="w-4 h-4 text-ocean-400 flex-shrink-0" />
-                      <p className="flex-1 text-sm text-gray-300 truncate">{img.original_filename}</p>
-                      {img.processed && (
-                        <>
-                          <span className={getRiskBadgeClass(img.risk_level)}>{img.risk_level || '—'}</span>
-                          <span className="text-xs text-gray-500 font-mono">{img.inference_latency_ms?.toFixed(1)}ms</span>
-                        </>
-                      )}
-                      <span className={`text-xs ${img.processed ? 'text-green-400' : 'text-yellow-400'}`}>
-                        {img.processed ? '✓ Analyzed' : '⏳ Pending'}
+          {filteredSurveys.map(survey => {
+            const isCompleted = survey.status === 'completed'
+            const surveyImgs = images[survey.id] || []
+            return (
+              <div key={survey.id} className="glass-card p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/5">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <h3 className="font-bold text-white text-lg">{survey.title}</h3>
+                      <span
+                        className={`text-xs px-2.5 py-0.5 rounded-full font-medium border flex items-center gap-1.5 ${
+                          isCompleted
+                            ? 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                            : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                        }`}
+                      >
+                        {isCompleted ? (
+                          <>
+                            <CheckCircle className="w-3 h-3 text-blue-400" /> Completed
+                          </>
+                        ) : (
+                          <>
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Active Sweep
+                          </>
+                        )}
                       </span>
                     </div>
-                  ))}
+                    <p className="text-sm text-gray-400 mt-1 flex items-center gap-3">
+                      {survey.location_name && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-gray-500" /> {survey.location_name}
+                        </span>
+                      )}
+                      <span>·</span>
+                      <span>{formatDate(survey.created_at)}</span>
+                      {survey.depth_m && (
+                        <>
+                          <span>·</span>
+                          <span className="text-cyan-400 font-mono">Depth: {survey.depth_m}m</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleStatusChange(survey.id, isCompleted ? 'active' : 'completed')}
+                      className={`text-xs py-1.5 px-3 rounded-lg border transition-all flex items-center gap-1.5 ${
+                        isCompleted
+                          ? 'border-white/10 text-gray-300 hover:text-white hover:bg-white/10'
+                          : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <>
+                          <RotateCcw className="w-3 h-3" /> Reopen Survey
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-3 h-3" /> Mark Completed
+                        </>
+                      )}
+                    </button>
+                    <Link
+                      to={`/survey/upload?survey=${survey.id}`}
+                      className="btn-ocean text-xs py-1.5 px-3 flex items-center gap-1"
+                    >
+                      <Upload className="w-3 h-3" /> Analyze Scans
+                    </Link>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-sm text-gray-500">No images uploaded yet.</p>
-              )}
+
+                {surveyImgs.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-2">
+                    {surveyImgs.slice(0, 4).map(img => (
+                      <div key={img.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                        <Image className="w-4 h-4 text-ocean-400 flex-shrink-0" />
+                        <p className="flex-1 text-sm text-gray-300 truncate">{img.original_filename}</p>
+                        {img.processed && (
+                          <>
+                            <span className={getRiskBadgeClass(img.risk_level)}>{img.risk_level || '—'}</span>
+                            <span className="text-xs text-gray-500 font-mono">{img.inference_latency_ms?.toFixed(1)}ms</span>
+                          </>
+                        )}
+                        <span className={`text-xs ${img.processed ? 'text-green-400' : 'text-yellow-400'}`}>
+                          {img.processed ? '✓ Analyzed' : '⏳ Pending'}
+                        </span>
+                      </div>
+                    ))}
+                    {surveyImgs.length > 4 && (
+                      <p className="text-xs text-gray-500 pt-1 text-right">
+                        +{surveyImgs.length - 4} more sonar frame{surveyImgs.length - 4 !== 1 ? 's' : ''} in archive
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No images uploaded for this survey session yet.</p>
+                )}
+              </div>
+            )
+          })}
+
+          {filteredSurveys.length === 0 && (
+            <div className="glass-card p-12 text-center">
+              <Waves className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400">
+                {activeFilter === 'completed'
+                  ? 'No completed surveys found in history.'
+                  : 'No active surveys found.'}
+              </p>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
@@ -1013,9 +1705,12 @@ export default function SurveyOperator() {
     <DashboardLayout>
       <Routes>
         <Route index element={<SurveyDashboard />} />
+        <Route path="list" element={<SurveyList />} />
+        <Route path="surveys" element={<SurveyList />} />
         <Route path="upload" element={<UploadAnalyze />} />
         <Route path="history" element={<SurveyHistory />} />
         <Route path="location" element={<LiveLocation />} />
+        <Route path="*" element={<Navigate to="/survey" replace />} />
       </Routes>
     </DashboardLayout>
   )
